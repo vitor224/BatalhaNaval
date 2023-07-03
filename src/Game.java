@@ -1,99 +1,42 @@
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.Socket;
 import java.util.Scanner;
 
-public class Game implements Runnable {
-    private Socket socket;
-    private ObjectInputStream inputStream;
-    private ObjectOutputStream outputStream;
-    private Scanner scanner;
+public class Game {
+    private String ipAddress;
+    private int port;
 
-    public Game(Socket socket) throws IOException {
-        this.socket = socket;
-        this.inputStream = new ObjectInputStream(socket.getInputStream());
-        this.outputStream = new ObjectOutputStream(socket.getOutputStream());
-        this.scanner = new Scanner(System.in);
+    public Game(String ipAddress, int port) {
+        this.ipAddress = ipAddress;
+        this.port = port;
     }
 
-    @Override
-    public void run() {
+    public void start() {
+        Scanner scanner = new Scanner(System.in);
         try {
-            // Implemente a lógica do jogo aqui
-            // Exemplo simplificado:
+            Client client = new Client(ipAddress, port);
+            Server server = new Server(port);
+            boolean isClientTurn = true;
+
             while (true) {
-                // Receber as coordenadas do tiro do jogador
-                int row = scanner.nextInt();
-                int col = scanner.nextInt();
-
-                // Realizar a lógica do tiro
-
-                // Verificar se o tiro acertou uma embarcação
-                boolean hit = verificarAcerto(row, col);
-
-                // Enviar a resposta para o jogador
-                send(hit);
-
-                // Verificar se todas as embarcações do jogador foram afundadas
-                if (todasEmbarcacoesAfundadas()) {
-                    // Jogador perdeu, encerrar o jogo
-                    break;
+                if (isClientTurn) {
+                    System.out.print("Digite a coordenada do tiro: ");
+                    String coordinate = scanner.nextLine();
+                    // Lógica para processar o tiro e criar uma mensagem com as coordenadas
+                    Message message = new Message(coordinate);
+                    client.send(message);
+                } else {
+                    System.out.println("Aguardando tiro do adversário...");
+                    Message receivedMessage = server.receive();
+                    // Lógica para processar o tiro recebido e mostrar o resultado
+                    System.out.println("O adversário atirou em: " + receivedMessage.getCoordinate());
                 }
 
-                // Receber a resposta do oponente
-                boolean opponentHit = (boolean) receive();
-
-                // Verificar se o oponente acertou uma embarcação
-                // Realizar a lógica do jogo para o oponente
-
-                // Enviar a resposta para o oponente
-                send(opponentHit);
-
-                // Verificar se todas as embarcações do oponente foram afundadas
-                if (todasEmbarcacoesOponenteAfundadas()) {
-                    // Jogador venceu, encerrar o jogo
-                    break;
-                }
+                isClientTurn = !isClientTurn;
             }
-        } catch (IOException e) {
+        } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        } finally {
-            try {
-                socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
-    }
 
-    private boolean verificarAcerto(int row, int col) {
-        // Implemente a lógica para verificar se o tiro acertou uma embarcação
-        // Retorne true se acertou, false caso contrário
-        return false;
-    }
-
-    private boolean todasEmbarcacoesAfundadas() {
-        // Implemente a lógica para verificar se todas as embarcações do jogador foram afundadas
-        // Retorne true se todas afundaram, false caso contrário
-        return false;
-    }
-
-    private boolean todasEmbarcacoesOponenteAfundadas() {
-        // Implemente a lógica para verificar se todas as embarcações do oponente foram afundadas
-        // Retorne true se todas afundaram, false caso contrário
-        return false;
-    }
-
-    // Métodos auxiliares para envio e recebimento de dados pelo socket
-    private void send(Object data) throws IOException {
-        outputStream.writeObject(data);
-        outputStream.flush();
-    }
-
-    private Object receive() throws IOException, ClassNotFoundException {
-        return inputStream.readObject();
+        scanner.close();
     }
 }
